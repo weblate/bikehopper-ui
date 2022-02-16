@@ -63,10 +63,9 @@ function App() {
       })
         .then(fetchedRoute => {
           setRoute({
-            paths: fetchedRoute.paths.map(path => path.points.coordinates),
+            paths: fetchedRoute.paths,
             startPoint,
             endPoint,
-            bboxes: fetchedRoute.paths.map(path => path.bbox)
           });
         });
     }
@@ -80,8 +79,7 @@ function App() {
       <BikehopperMap
         startPoint={startPoint}
         endPoint={endPoint}
-        routeCoords={route && route.paths[0]}
-        bbox={route && route.bboxes[0]}
+        route={route}
         onStartPointDrag={handleStartPointDrag}
         onEndPointDrag={handleEndPointDrag}
       />
