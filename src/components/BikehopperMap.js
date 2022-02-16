@@ -115,7 +115,7 @@ function BikehopperMap(props) {
         offsetLeft={-13}
         offsetTop={-39}
       >
-        <MarkerSVG />
+        <MarkerSVG fillColor="#10c040" />
       </Marker>}
       {endPoint && <Marker
         id='endMarker'
@@ -126,7 +126,7 @@ function BikehopperMap(props) {
         offsetLeft={-13}
         offsetTop={-39}
       >
-        <MarkerSVG />
+        <MarkerSVG fillColor="#f02008" />
       </Marker>}
     </MapGL >
   );
