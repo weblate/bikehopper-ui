@@ -10,6 +10,7 @@ import {
   LocationSourceType,
   locationInputFocused,
 } from '../features/locations';
+import useEventListener from '../hooks/useEventListener';
 
 import './App.css';
 
@@ -46,8 +47,20 @@ function App() {
 
   const showMap = !isEditingLocations;
 
+  // Shrink when virtual keyboard is hiding content, so you can't be scrolled down
+  //const [visualViewportHeight, setVisualViewportHeight] = React.useState(null);
+  const viewportHandler = function (evt) {
+    //setVisualViewportHeight(window.visualViewport.height);
+    document.body.style.height = `${window.visualViewport.height}px`;
+  };
+  useEventListener(window.visualViewport, 'scroll', viewportHandler);
+  useEventListener(window.visualViewport, 'resize', viewportHandler);
+  const styleObj = null; //visualViewportHeight && {
+  //  height: `${visualViewportHeight}px`,
+  //};
+
   return (
-    <div className="App">
+    <div className="App" style={styleObj}>
       <TopBar
         showSearchBar={isEditingLocations || hasLocations || hasRoutes}
         initiallyFocusDestination={isEditingLocations}
