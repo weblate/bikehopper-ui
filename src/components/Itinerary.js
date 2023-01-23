@@ -6,6 +6,7 @@ import Icon from './Icon';
 import ItineraryBikeLeg from './ItineraryBikeLeg';
 import ItineraryHeader from './ItineraryHeader';
 import ItineraryTransitLeg from './ItineraryTransitLeg';
+import ShareBar from './ShareBar';
 
 import { ReactComponent as NavLeftArrow } from 'iconoir/icons/nav-arrow-left.svg';
 import './Itinerary.css';
@@ -77,6 +78,7 @@ export default function Itinerary({
             {durationText} &middot; via {modesText}
           </h3>
         </div>
+        <ShareBar />
       </div>
       <div className="Itinerary_timeline">
         {renderedLegs}

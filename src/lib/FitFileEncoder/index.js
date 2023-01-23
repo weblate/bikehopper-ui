@@ -5,37 +5,49 @@ export default class FitFileEncoder {
   constructor(leg) {
     this.encoder = new FitEncoder();
     this.fitBlob = null;
-    this.startDate = Date().now();
-    this.lastTimeStamp = new Date(this.startDate.getTime());
+    this.startDate = Date.now();
+    this.lastTimeStamp = new Date(this.startDate).getTime();
     this.leg = leg;
     this.recordMessages = [];
   }
 
   // Get blob
-  getBlob() {}
+  getBlob() {
+    return this.encoder.createBlob();
+  }
 
   // Convert geoJSON to fit file.
   createFit() {
     // writeFileIdMessage()
-    encoder.writeFileId({
-      type: 31,
-      manufacturer: 1,
-      product: 0,
-      serial_number: 12345,
-      time_created: startDate,
-      product_name: 'bikehopper',
-    });
+    this.encoder.writeFileId([
+      {
+        type: 31,
+        manufacturer: 1,
+        product: 0,
+        serial_number: 12345,
+        time_created: this.startDate,
+        product_name: 'bikehopper',
+      },
+    ]);
 
     // writeCourseMessage()
-    encoder.write('course', { sport: 2, name: 'BikeHopper Course' });
+    this.encoder.writeMessage('course', [
+      { sport: 2, name: 'BikeHopper Course' },
+    ]);
 
     // createRecordMessages()
     this.createRecordMessages();
 
     // calculateDistanceToPriorPointInMeters()
+    this.calculateDistanceToPriorPointInMeters();
+
     // writeLapMessage()
+    // this.encoder.write('lap', {})
     // writeTimerStartMessage()
+
     // writeRecordMessages()
+    this.writeRecordMessages();
+
     // writeCoursePoints()
     // writeTimerStopMessage()
 
@@ -53,42 +65,71 @@ export default class FitFileEncoder {
 
   // Create our record messages.
   createRecordMessages() {
-    this.recordMessages = this.leg[0].geometry.coordinates.map((m) => {
-      console.log('Converting message');
+    this.recordMessages = this.leg.geometry.coordinates.map((m) => {
+      this.lastTimeStamp += 10;
       return {
-        positionLong: m.point[0],
-        positionLat: m.point[1],
-        altitude: m.point[2],
+        positionLong: m[0],
+        positionLat: m[1],
+        altitude: m[2],
         timeStamp: this.lastTimeStamp,
         localNum: 5,
       };
     });
   }
 
-  // Compute distance for every record message and update the record.
-  calculateDistanceToPriorPointInMeters() {
-    let distance = 0;
-    this.recordMessages.forEach((r, i) => {
-      if (i > 0) {
-        distance += self.distanceBetween2Points(lat1, lon1, lat2, lon2);
-      }
-      r.distance = distance;
-    });
-  }
-
   // Calculate distance between two GPS points.
   distanceBetween2Points(lat1, lon1, lat2, lon2) {
     const earthRadius = 6371000; // Meters
-    const dLat = Math.toRadians(lat2 - lat1);
-    const dLng = Math.toRadians(lon2 - lon1);
+    const dLat = this.degToRad(lat2 - lat1);
+    const dLng = this.degToRad(lon2 - lon1);
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(Math.toRadians(lat1)) *
-        Math.cos(Math.toRadians(lat2)) *
+      Math.cos(this.degToRad(lat1)) *
+        Math.cos(this.degToRad(lat2)) *
         Math.sin(dLng / 2) *
         Math.sin(dLng / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
     return earthRadius * c;
+  }
+
+  writeRecordMessages() {
+    this.recordMessages.forEach((recordMessage) => {
+      this.encoder.writeRecord([
+        {
+          altitude: recordMessage.altitude,
+          distance: recordMessage.distance,
+          timeStamp: recordMessage.timeStamp,
+          position_lat: recordMessage.positionLat,
+          position_long: recordMessage.positionLong,
+        },
+      ]);
+    });
+  }
+
+  // Compute distance for every record message and update the record.
+  calculateDistanceToPriorPointInMeters() {
+    let distance = 0;
+    let currentRecord;
+    let priorRecord;
+
+    for (let i = 0; i < this.recordMessages.length; i++) {
+      currentRecord = this.recordMessages[i];
+      if (i > 0) {
+        priorRecord = this.recordMessages[i - 1];
+        distance += this.distanceBetween2Points(
+          priorRecord.positionLat,
+          priorRecord.positionLong,
+          currentRecord.positionLat,
+          currentRecord.positionLong,
+        );
+      }
+      currentRecord.distance = distance;
+    }
+  }
+
+  // Convert degrees to radians
+  degToRad(degrees) {
+    return degrees * (Math.PI / 180);
   }
 }
