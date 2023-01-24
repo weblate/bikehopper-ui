@@ -118,7 +118,7 @@ export default class FitFileEncoder {
 
   stopTimer() {
     this.encoder.writeEvent({
-      timestamp: this.recordMessages[this.recordMesages.length - 1].timeStamp,
+      timestamp: this.recordMessages[this.recordMessages.length - 1].timeStamp,
       event: 'timer',
       event_time: 'stop_disable_all',
       event_group: 0,
