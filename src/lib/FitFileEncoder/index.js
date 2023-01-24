@@ -18,49 +18,21 @@ export default class FitFileEncoder {
 
   // Convert geoJSON to fit file.
   createFit() {
-    // writeFileIdMessage()
-    this.encoder.writeFileId([
-      {
-        type: 31,
-        manufacturer: 1,
-        product: 0,
-        serial_number: 12345,
-        time_created: this.startDate,
-        product_name: 'bikehopper',
-      },
-    ]);
-
-    // writeCourseMessage()
-    this.encoder.writeMessage('course', [
-      { sport: 2, name: 'BikeHopper Course' },
-    ]);
-
-    // createRecordMessages()
+    this.writeFileIdMessage();
     this.createRecordMessages();
-
-    // calculateDistanceToPriorPointInMeters()
     this.calculateDistanceToPriorPointInMeters();
-
-    // writeLapMessage()
-    // this.encoder.write('lap', {})
-    // writeTimerStartMessage()
-
-    // writeRecordMessages()
+    this.startTimer();
     this.writeRecordMessages();
-
+    this.writeLapMessage();
     // writeCoursePoints()
-    // writeTimerStopMessage()
+    this.stopTimer();
+  }
 
-    // ** Write a message with the following information.
-    // val cpm = CoursePointMesg()
-    // cpm.timestamp = correspondingRecordMessage.timestamp
-    // cpm.name = instruction.text
-    // cpm.positionLong = correspondingRecordMessage.positionLong
-    // cpm.positionLat = correspondingRecordMessage.positionLat
-    // cpm.distance = correspondingRecordMessage.distance
-    // cpm.type = getGarminSignFromGraphHopper(instruction.sign)
-    // cpm.localNum = 4
-    // return cpm
+  writeFileIdMessage() {
+    this.encoder.writeFileId({
+      type: 'course',
+      time_created: this.startDate,
+    });
   }
 
   // Create our record messages.
@@ -93,17 +65,19 @@ export default class FitFileEncoder {
     return earthRadius * c;
   }
 
+  // TODO: Am I doing this right?  Should I not write an array?
+  // Should I transform it into an array of objects and just write that one array?
   writeRecordMessages() {
+    console.log('Writing record messages...');
     this.recordMessages.forEach((recordMessage) => {
-      this.encoder.writeRecord([
-        {
-          altitude: recordMessage.altitude,
-          distance: recordMessage.distance,
-          timeStamp: recordMessage.timeStamp,
-          position_lat: recordMessage.positionLat,
-          position_long: recordMessage.positionLong,
-        },
-      ]);
+      console.log(recordMessage);
+      this.encoder.writeRecord({
+        altitude: recordMessage.altitude,
+        distance: recordMessage.distance,
+        timestamp: recordMessage.timeStamp,
+        position_lat: recordMessage.positionLat,
+        position_long: recordMessage.positionLong,
+      });
     });
   }
 
@@ -131,5 +105,39 @@ export default class FitFileEncoder {
   // Convert degrees to radians
   degToRad(degrees) {
     return degrees * (Math.PI / 180);
+  }
+
+  startTimer() {
+    this.encoder.writeEvent({
+      timestamp: this.recordMessages[0].timeStamp,
+      event: 'timer',
+      event_time: 'start',
+      event_group: 0,
+    });
+  }
+
+  stopTimer() {
+    this.encoder.writeEvent({
+      timestamp: this.recordMessages[this.recordMesages.length - 1].timeStamp,
+      event: 'timer',
+      event_time: 'stop_disable_all',
+      event_group: 0,
+    });
+  }
+
+  // TODO: Write lap message.
+  writeLapMessage() {
+    const firstMessage = this.recordMessages[0];
+    const lastMessage = this.recordMessages[this.recordMessages.length - 1];
+
+    this.encoder.writeMessage('lap', {
+      start_time: firstMessage.timeStamp,
+      start_position_lat: firstMessage.positionLat,
+      start_position_long: firstMessage.positionLong,
+      end_position_lat: lastMessage.positionLat,
+      end_position_long: lastMessage.positionLong,
+      total_elapsed_time: lastMessage.timeStamp - firstMessage.timeStamp,
+      total_time_time: lastMessage.timeStamp - firstMessage.timeStamp,
+    });
   }
 }
