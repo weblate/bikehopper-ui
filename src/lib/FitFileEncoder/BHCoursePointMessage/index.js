@@ -1,5 +1,8 @@
 export default class BHCoursePointMessage {
-  constructor(instruction, correspondingRecordMessage) {
+  constructor(instruction, rMsg) {
+    this.instruction = instruction;
+    this.rMsg = rMsg;
+
     this.signLookup = {
       '-98': '23', // A U-turn without the knowledge if it is a right or left U-turn
       '-8': '23', // A left U-turn
@@ -16,9 +19,58 @@ export default class BHCoursePointMessage {
       5: '53', // The instruction before a via point
       6: '53', // The instruction before entering a roundabout
       7: '21', // Keep right
-      8: '23', // A right U-turn
+      8: '23', // A right U-turn,
     };
   }
 
-  getMessage() {}
+  getMessage() {
+    return {
+      timestamp: this.rMsg.timeStamp,
+      type: this.getName(this.instruction),
+      name: this.instruction.text,
+      position_lat: this.rMsg.positionLat,
+      position_long: this.rMsg.positionLong,
+      distance: this.rMsg.distance,
+    };
+  }
+
+  // Translate instruction from bikehopper to fit format.
+  getName(instruction) {
+    switch (instruction.sign) {
+      case -98:
+        return 23;
+      case -8:
+        return 23;
+      case -7:
+        return 19;
+      case -6:
+        return 53;
+      case -3:
+        return 20;
+      case -2:
+        return 6;
+      case -1:
+        return 19;
+      case 0:
+        return 8;
+      case 1:
+        return 19;
+      case 2:
+        return 7;
+      case 3:
+        return 21;
+      case 4:
+        return 53;
+      case 5:
+        return 53;
+      case 6:
+        return 53;
+      case 7:
+        return 21;
+      case 8:
+        return 23;
+      default:
+        return 0;
+    }
+  }
 }

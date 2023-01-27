@@ -24,7 +24,7 @@ export default class FitFileEncoder {
     this.startTimer();
     this.writeRecordMessages();
     this.writeLapMessage();
-    // writeCoursePoints()
+    this.writeCoursePointMessages();
     this.stopTimer();
   }
 
@@ -65,12 +65,9 @@ export default class FitFileEncoder {
     return earthRadius * c;
   }
 
-  // TODO: Am I doing this right?  Should I not write an array?
   // Should I transform it into an array of objects and just write that one array?
   writeRecordMessages() {
-    console.log('Writing record messages...');
     this.recordMessages.forEach((recordMessage) => {
-      console.log(recordMessage);
       this.encoder.writeRecord({
         altitude: recordMessage.altitude,
         distance: recordMessage.distance,
@@ -138,6 +135,22 @@ export default class FitFileEncoder {
       end_position_long: lastMessage.positionLong,
       total_elapsed_time: lastMessage.timeStamp - firstMessage.timeStamp,
       total_time_time: lastMessage.timeStamp - firstMessage.timeStamp,
+    });
+  }
+
+  // TODO: Write course point messages for turn by turn
+  writeCoursePointMessages() {
+    // Get instructions from our leg.
+    console.log('writeCoursePointMessages: ');
+    this.leg.instructions.forEach((i) => {
+      // Use the first item in our interval to find our corresponding record message.
+      const cpm = new BHCoursePointMessage(
+        i,
+        this.recordMessages[i.interval[0]],
+      );
+      console.log('course_point_message');
+      console.log(cpm.getMessage());
+      this.encoder.writeMessage('course_point', cpm.getMessage());
     });
   }
 }
