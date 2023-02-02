@@ -31,7 +31,7 @@ export default class FitFileEncoder {
   writeFileIdMessage() {
     this.encoder.writeFileId({
       type: 'course',
-      time_created: this.startDate,
+      time_created: this.startDate.getTime(),
     });
   }
 
@@ -49,7 +49,7 @@ export default class FitFileEncoder {
     });
   }
 
-  // Calculate distance between two GPS points.
+  // Calculate the great circle distance between two GPS points.
   distanceBetween2Points(lat1, lon1, lat2, lon2) {
     const earthRadius = 6371000; // Meters
     const dLat = this.degToRad(lat2 - lat1);
