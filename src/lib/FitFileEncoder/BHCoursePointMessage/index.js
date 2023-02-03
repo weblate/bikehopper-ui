@@ -8,6 +8,7 @@ export default class BHCoursePointMessage {
     return {
       timestamp: this.rMsg.timeStamp,
       type: this.getName(this.instruction),
+      // TODO: name does not seem to work...
       name: this.instruction.text,
       position_lat: this.rMsg.positionLat,
       position_long: this.rMsg.positionLong,

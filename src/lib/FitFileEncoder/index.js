@@ -31,7 +31,7 @@ export default class FitFileEncoder {
   writeFileIdMessage() {
     this.encoder.writeFileId({
       type: 'course',
-      time_created: this.startDate.getTime(),
+      time_created: this.startDate,
     });
   }
 
@@ -122,7 +122,6 @@ export default class FitFileEncoder {
     });
   }
 
-  // TODO: Write lap message.
   writeLapMessage() {
     const firstMessage = this.recordMessages[0];
     const lastMessage = this.recordMessages[this.recordMessages.length - 1];
@@ -138,18 +137,15 @@ export default class FitFileEncoder {
     });
   }
 
-  // TODO: Write course point messages for turn by turn
+  // Write turn by turn.
   writeCoursePointMessages() {
     // Get instructions from our leg.
-    console.log('writeCoursePointMessages: ');
     this.leg.instructions.forEach((i) => {
       // Use the first item in our interval to find our corresponding record message.
       const cpm = new BHCoursePointMessage(
         i,
         this.recordMessages[i.interval[0]],
       );
-      console.log('course_point_message');
-      console.log(cpm.getMessage());
       this.encoder.writeMessage('course_point', cpm.getMessage());
     });
   }
