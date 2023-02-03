@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useDispatch, useSelector, shallowEqual } from 'react-redux';
-import uniqBy from 'lodash/uniqBy';
+import { removeRecentlyUsedLocation } from '../features/geocoding';
 import {
   LocationSourceType,
   selectCurrentLocation,
@@ -18,20 +18,24 @@ import './SearchAutocompleteDropdown.css';
 
 const LIST_ITEM_CLASSNAME = 'SearchAutocompleteDropdown_place';
 
+let _resultMousedownTime = 0;
+
 export default function SearchAutocompleteDropdown(props) {
   const dispatch = useDispatch();
 
-  const { startOrEnd, inputText, geocodedFeatures, showCurrentLocationOption } =
+  const { startOrEnd, inputText, features, showCurrentLocationOption } =
     useSelector((state) => {
       const startOrEnd = state.routeParams.editingLocation;
 
       // TODO: Remove this after verifying it doesn't happen
       if (!startOrEnd) throw new Error('expected to be editing start or end');
 
-      let inputText = state.routeParams[startOrEnd + 'InputText'];
-      let cache = inputText && state.geocoding.cache['@' + inputText.trim()];
+      const inputText = state.routeParams[startOrEnd + 'InputText'];
+      let cache =
+        inputText && state.geocoding.typeaheadCache['@' + inputText.trim()];
       let fallbackToGeocodedLocationSourceText = false;
       if (!cache || cache.status !== 'succeeded') {
+        let autocompletedText = inputText;
         // If the location we're editing has a geocoded location already selected, display the
         // other options from the input text that was used to pick that.
         const relevantLocation = state.routeParams[startOrEnd];
@@ -42,8 +46,9 @@ export default function SearchAutocompleteDropdown(props) {
           (inputText === '' ||
             inputText === describePlace(relevantLocation.point))
         ) {
-          inputText = relevantLocation.fromInputText;
-          cache = state.geocoding.cache['@' + inputText.trim()];
+          autocompletedText = relevantLocation.fromInputText;
+          cache =
+            state.geocoding.typeaheadCache['@' + autocompletedText.trim()];
           fallbackToGeocodedLocationSourceText = true;
         } else {
           // Still nothing? Try prefixes of the input text. Example: current input text is
@@ -51,12 +56,16 @@ export default function SearchAutocompleteDropdown(props) {
           // which came back while you were typing.
           let strippedChars = 0;
           while (
-            inputText &&
+            autocompletedText &&
             (!cache || cache.status !== 'succeeded') &&
             strippedChars++ < 8
           ) {
-            inputText = inputText.substr(0, inputText.length - 1);
-            cache = state.geocoding.cache['@' + inputText.trim()];
+            autocompletedText = autocompletedText.substr(
+              0,
+              autocompletedText.length - 1,
+            );
+            cache =
+              state.geocoding.typeaheadCache['@' + autocompletedText.trim()];
           }
         }
       }
@@ -75,25 +84,54 @@ export default function SearchAutocompleteDropdown(props) {
         (fallbackToGeocodedLocationSourceText ||
           'current location'.indexOf(inputText.toLowerCase()) === 0);
 
+      let recentlyUsedFeatureIds = [];
+      let autocompleteFeatureIds = [];
+
+      if (inputText === '') {
+        // Suggest recently used locations
+        // NOTE: This is currently only done if input text is empty, but we
+        // could switch to always showing recently used locations that match
+        // the text typed, alongside Photon results.
+        recentlyUsedFeatureIds = state.geocoding.recentlyUsed.map((r) => r.id);
+      } else if (cache && cache.status === 'succeeded') {
+        autocompleteFeatureIds = cache.osmIds;
+      }
+
+      // Limit result size, don't show the location already selected as start
+      // point as a candidate for end point (or vice versa), and hydrate.
+      const otherId = state.routeParams[other]?.point?.properties?.osm_id;
+      const shownFeatures = [
+        ...autocompleteFeatureIds.map((id) => state.geocoding.osmCache[id]),
+        ...recentlyUsedFeatureIds.map((id) => ({
+          ...state.geocoding.osmCache[id],
+          fromRecentlyUsed: true,
+        })),
+      ]
+        .filter((feat) => feat.properties.osm_id !== otherId)
+        .slice(0, 8);
+
       return {
         startOrEnd,
         inputText,
-        geocodedFeatures:
-          cache && cache.status === 'succeeded' ? cache.features : [],
+        features: shownFeatures,
         showCurrentLocationOption,
       };
     }, shallowEqual);
 
-  const dedupedFeatures = uniqBy(geocodedFeatures, 'properties.osm_id');
-
   const handleClick = (index) => {
-    dispatch(
-      selectGeocodedLocation(startOrEnd, dedupedFeatures[index], inputText),
-    );
+    dispatch(selectGeocodedLocation(startOrEnd, features[index], inputText));
+  };
+
+  const handleRemoveClick = (index) => {
+    dispatch(removeRecentlyUsedLocation(features[index].properties.osm_id));
   };
 
   const handleCurrentLocationClick = () => {
     dispatch(selectCurrentLocation(startOrEnd));
+  };
+
+  const handleResultMousedown = () => {
+    _resultMousedownTime = Date.now();
   };
 
   return (
@@ -102,6 +140,7 @@ export default function SearchAutocompleteDropdown(props) {
         <SelectionListItem
           buttonClassName={LIST_ITEM_CLASSNAME}
           onClick={handleCurrentLocationClick}
+          onMouseDown={handleResultMousedown}
         >
           <Icon className="SearchAutocompleteDropdown_icon">
             <Position />
@@ -111,11 +150,17 @@ export default function SearchAutocompleteDropdown(props) {
           </span>
         </SelectionListItem>
       )}
-      {dedupedFeatures.map((feature, index) => (
+      {features.map((feature, index) => (
         <SelectionListItem
           buttonClassName={LIST_ITEM_CLASSNAME}
           key={feature.properties.osm_id + ':' + feature.properties.type}
           onClick={handleClick.bind(null, index)}
+          onMouseDown={handleResultMousedown}
+          onRemoveClick={
+            feature.fromRecentlyUsed
+              ? handleRemoveClick.bind(null, index)
+              : null
+          }
         >
           <PlaceIcon
             className="SearchAutocompleteDropdown_icon"
@@ -134,4 +179,10 @@ export default function SearchAutocompleteDropdown(props) {
 export function isAutocompleteResultElement(domElement) {
   if (!domElement) return false;
   return Array.from(domElement.classList).includes(LIST_ITEM_CLASSNAME);
+}
+
+// Hack for letting search bar see if an autocomplete result was just tapped on
+// but the browser in question does not focus it
+export function getLastAutocompleteResultMousedownTime() {
+  return _resultMousedownTime;
 }
