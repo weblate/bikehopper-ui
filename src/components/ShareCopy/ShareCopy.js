@@ -15,7 +15,7 @@ function ShareCopy() {
       .then((result) => {
         if (result.state === 'granted' || result.state === 'prompt') {
           navigator.clipboard.writeText(content);
-          dispatch(displayToastyMessage('URL Copied.'));
+          dispatch(displayToastyMessage('Route Copied.'));
         }
       })
       .catch((e) => {
